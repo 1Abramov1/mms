@@ -1,0 +1,36 @@
+﻿# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Database
+db.sqlite3
+*.sqlite3
+
+# Python cache
+__pycache__/     # ← С: добавили подчеркивания
+*.pyc
+*.pyo
+*.pyd
+
+# Django
+*.log
+local_settings.py
+staticfiles/
+media/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment variables
+.env
+.env.local
