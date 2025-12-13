@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'apps.clients', # приложение клиенты
+    'apps.clients', # 1 приложение клиенты
+    'apps.mailing_messages' # 2 приложение управление сообщениями
 ]
 
 MIDDLEWARE = [
