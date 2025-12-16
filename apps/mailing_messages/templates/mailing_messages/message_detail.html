@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Сообщение: {{ message.subject }} - MMS{% endblock %}
+
+{% block page_title %}Сообщение: {{ message.subject }}{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'mailing_messages:message_update' message.pk %}" class="btn btn-warning">
+    <i class="bi bi-pencil"></i> Редактировать
+</a>
+<a href="{% url 'mailing_messages:message_delete' message.pk %}" class="btn btn-outline-danger">
+    <i class="bi bi-trash"></i> Удалить
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Основная информация -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Информация о сообщении
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h5>Тема письма:</h5>
+                    <p class="fs-4">{{ message.subject }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <h5>Тело письма:</h5>
+                    <div class="p-3 bg-light rounded">
+                        {{ message.body|linebreaks }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Боковая панель -->
+    <div class="col-lg-4">
+        <!-- Детали -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-calendar"></i> Детали
+            </div>
+            <div class="card-body">
+                <p><strong>Дата создания:</strong><br>
+                {{ message.created_at|date:"d.m.Y H:i" }}</p>
+
+                <p><strong>Дата обновления:</strong><br>
+                {{ message.updated_at|date:"d.m.Y H:i" }}</p>
+
+                <p><strong>Создал:</strong><br>
+                {% if message.created_by %}
+                {{ message.created_by.username }}
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}</p>
+            </div>
+        </div>
+
+        <!-- Действия -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightning"></i> Быстрые действия
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'mailing_messages:message_preview' message.pk %}" class="btn btn-outline-primary">
+                        <i class="bi bi-eye"></i> Предпросмотр
+                    </a>
+                    <a href="{% url 'mailing_messages:message_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Назад к списку
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Связанные рассылки (если есть) -->
+{% if message.mailings.exists %}
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-send"></i> Связанные рассылки ({{ message.mailings.count }})
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Дата начала</th>
+                        <th>Статус</th>
+                        <th>Получателей</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mailing in message.mailings.all %}
+                    <tr>
+                <td>{{ mailing.start_time|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            {% if mailing.status == 'Создана' %}
+                            <span class="badge bg-info">{{ mailing.get_status_display }}</span>
+                            {% elif mailing.status == 'Запущена' %}
+                            <span class="badge bg-success">{{ mailing.get_status_display }}</span>
+                            {% elif mailing.status == 'Завершена' %}
+                            <span class="badge bg-secondary">{{ mailing.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ mailing.recipients_count }}</td>
+                        <td>
+                            <a href="{% url 'mailings:mailing_detail' mailing.pk %}"
+                               class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

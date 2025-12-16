@@ -7,5 +7,6 @@ urlpatterns = [
     path('clients/', include('apps.clients.urls')),
     path('', RedirectView.as_view(url='clients/')),
     path('messages/', include('apps.mailing_messages.urls')),
+    path('mailings/', include('apps.mailings.urls')),
 ]
 

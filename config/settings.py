@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'apps.clients', # 1 приложение клиенты
-    'apps.mailing_messages' # 2 приложение управление сообщениями
+    'apps.mailing_messages', # 2 приложение управление сообщениями
+    'apps.mailings', # 3 приложение управление рассылками
 ]
 
 MIDDLEWARE = [
@@ -56,10 +57,13 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
