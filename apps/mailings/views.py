@@ -1,11 +1,14 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.utils import timezone
-from .models import Mailing
+from .models import Mailing, MailingLog
 from .forms import MailingForm
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from .services import MailingService
 
 
 class MailingListView(LoginRequiredMixin, ListView):
@@ -136,8 +139,139 @@ def mailing_stats(request):
         stats['created_percent'] = (stats['created'] / stats['total']) * 100
         stats['started_percent'] = (stats['started'] / stats['total']) * 100
         stats['completed_percent'] = (stats['completed'] / stats['total']) * 100
-
     else:
         stats['created_percent'] = stats['started_percent'] = stats['completed_percent'] = 0
 
     return render(request, 'mailings/mailing_stats.html', {'stats': stats})
+
+
+@login_required
+@require_POST
+def mailing_start_now(request, pk):
+    """
+    Ручной запуск рассылки через интерфейс пользователя
+    """
+    mailing = get_object_or_404(Mailing, pk=pk)
+    current_time = timezone.now()
+
+    # Проверяем права
+    if not request.user.is_staff and mailing.created_by != request.user:
+        messages.error(request, 'У вас нет прав для запуска этой рассылки')
+        return redirect('mailings:mailing_detail', pk=pk)
+
+    # Проверяем статус рассылки
+    if mailing.status == Mailing.STATUS_COMPLETED:
+        messages.warning(request, 'Рассылка уже завершена и не может быть запущена')
+        return redirect('mailings:mailing_detail', pk=pk)
+
+    # ПРОВЕРКА ВРЕМЕНИ СОГЛАСНО ТЗ
+    if current_time < mailing.start_time:
+        messages.error(
+            request,
+            f'Рассылка не может быть запущена раньше времени начала ({mailing.start_time.strftime("%Y-%m-%d %H:%M")})'
+        )
+        return redirect('mailings:mailing_detail', pk=pk)
+
+    if mailing.end_time and current_time > mailing.end_time:
+        messages.error(
+            request,
+            f'Рассылка не может быть запущена позже времени окончания ({mailing.end_time.strftime("%Y-%m-%d %H:%M")})'
+        )
+        return redirect('mailings:mailing_detail', pk=pk)
+
+    # Запускаем рассылку
+    success, result_message = MailingService.send_mailing(mailing)
+
+    if success:
+        messages.success(request, f'Рассылка запущена: {result_message}')
+    else:
+        messages.error(request, f'Ошибка запуска: {result_message}')
+
+    return redirect('mailings:mailing_detail', pk=pk)
+
+
+@login_required
+def mailing_send_test(request, pk):
+    """
+    Отправка тестового письма для проверки
+    """
+    mailing = get_object_or_404(Mailing, pk=pk)
+
+    # Проверяем права доступа
+    if not request.user.is_staff and mailing.created_by != request.user:
+        messages.error(request, 'У вас нет прав для тестовой отправки')
+        return redirect('mailings:mailing_detail', pk=pk)
+
+    if request.method == 'POST':
+        test_email = request.POST.get('test_email', '').strip()
+
+        if test_email:
+            success, result_message = MailingService.send_test_email(
+                test_email,
+                f"[ТЕСТ] {mailing.message.subject}",
+                mailing.message.body
+            )
+
+            if success:
+                messages.success(request, f'Тестовое письмо отправлено: {result_message}')
+            else:
+                messages.error(request, f'Ошибка отправки: {result_message}')
+        else:
+            messages.error(request, 'Введите email для тестовой отправки')
+
+    return redirect('mailings:mailing_detail', pk=pk)
+
+
+@login_required
+def mailing_logs(request, pk):
+    """
+    Просмотр логов отправки
+    """
+    mailing = get_object_or_404(Mailing, pk=pk)
+    """ 
+    Проверяем права доступа
+    """
+    if not request.user.is_staff and mailing.created_by != request.user:
+        messages.error(request, 'У вас нет прав для просмотра логов этой рассылки')
+        return redirect('mailings:mailing_detail', pk=pk)
+
+    logs = mailing.logs.all().order_by('-sent_at')
+    stats = MailingService.get_mailing_stats(mailing)
+
+    return render(request, 'mailings/mailing_logs.html', {
+        'mailing': mailing,
+        'logs': logs,
+        'stats': stats,
+    })
+
+
+@login_required
+def mailing_stats_detailed(request, pk):
+    """
+    Детальная статистика по рассылке
+    """
+    mailing = get_object_or_404(Mailing, pk=pk)
+
+    # Проверяем права доступа
+    if not request.user.is_staff and mailing.created_by != request.user:
+        messages.error(request, 'У вас нет прав для просмотра статистики этой рассылки')
+        return redirect('mailings:mailing_detail', pk=pk)
+
+    stats = MailingService.get_mailing_stats(mailing)
+
+    # Группировка по статусам
+    logs_by_status = {
+        'success': mailing.logs.filter(status=MailingLog.STATUS_SUCCESS),
+        'failed': mailing.logs.filter(status=MailingLog.STATUS_FAILED),
+    }
+
+    # Группировка по времени
+    today = timezone.now().date()
+    logs_today = mailing.logs.filter(sent_at__date=today).count()
+
+    return render(request, 'mailings/mailing_stats_detailed.html', {
+        'mailing': mailing,
+        'stats': stats,
+        'logs_by_status': logs_by_status,
+        'logs_today': logs_today,
+    })
