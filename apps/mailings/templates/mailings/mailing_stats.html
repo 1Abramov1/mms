@@ -149,6 +149,14 @@
         </div>
     </div>
 </div>
+<div class="mt-4 text-center">
+    <a href="{% url 'mailings:overall_statistics' %}" class="btn btn-primary">
+        <i class="bi bi-bar-chart-line"></i> Расширенная статистика
+    </a>
+    <a href="{% url 'mailings:mailing_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-list"></i> Все рассылки
+    </a>
+</div>
 {% endblock %}
 
 {% block extra_js %}

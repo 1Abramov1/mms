@@ -4,13 +4,6 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from apps.mailing_messages.models import Message
 from apps.clients.models import Client
-from typing import Optional, TYPE_CHECKING
-from datetime import datetime as dt
-import datetime
-
-if TYPE_CHECKING:
-    from django.db.models.manager import Manager
-    from apps.clients.models import Client as ClientType
 
 
 class Mailing(models.Model):
@@ -29,49 +22,49 @@ class Mailing(models.Model):
     ]
 
     # Поля из ТЗ
-    start_time: 'models.DateTimeField' = models.DateTimeField(
+    start_time = models.DateTimeField(
         verbose_name='Дата и время начала отправки',
         help_text='С какого момента рассылка может быть запущена'
     )
 
-    end_time: 'models.DateTimeField' = models.DateTimeField(
+    end_time = models.DateTimeField(
         verbose_name='Дата и время окончания отправки',
         help_text='До какого момента разрешено выполнять отправку'
     )
 
-    status: 'models.CharField' = models.CharField(
+    status = models.CharField(
         verbose_name='Статус',
         max_length=20,
         choices=STATUS_CHOICES,
         default=STATUS_CREATED,
-        editable=False  # Статус вычисляется динамически
+        editable=False
     )
 
-    message: 'models.ForeignKey' = models.ForeignKey(
+    message = models.ForeignKey(
         Message,
         verbose_name='Сообщение',
         on_delete=models.CASCADE,
         related_name='mailings'
     )
 
-    recipients: 'models.ManyToManyField' = models.ManyToManyField(
+    recipients = models.ManyToManyField(
         Client,
         verbose_name='Получатели',
         related_name='mailings'
     )
 
     # Дополнительные поля
-    created_at: 'models.DateTimeField' = models.DateTimeField(
+    created_at = models.DateTimeField(
         verbose_name='Дата создания',
         auto_now_add=True
     )
 
-    updated_at: 'models.DateTimeField' = models.DateTimeField(
+    updated_at = models.DateTimeField(
         verbose_name='Дата обновления',
         auto_now=True
     )
 
-    created_by: 'models.ForeignKey' = models.ForeignKey(
+    created_by = models.ForeignKey(
         User,
         verbose_name='Создал',
         on_delete=models.SET_NULL,
@@ -79,10 +72,6 @@ class Mailing(models.Model):
         blank=True,
         related_name='created_mailings'
     )
-
-    # Аннотации для менеджеров
-    if TYPE_CHECKING:
-        objects: Manager['Mailing']
 
     class Meta:
         verbose_name = 'Рассылка'
@@ -95,19 +84,15 @@ class Mailing(models.Model):
             models.Index(fields=['created_at']),
         ]
 
-    def __str__(self) -> str:
+    def __str__(self):
         """Строковое представление рассылки"""
-        start_time_value: Optional[dt] = self.start_time
-
-        if start_time_value:
-            start_time_str = start_time_value.strftime('%d.%m.%Y %H:%M')
+        if self.start_time:
+            start_time_str = self.start_time.strftime('%d.%m.%Y %H:%M')
         else:
             start_time_str = 'Не указано'
+        return f"Рассылка от {start_time_str} - {self.get_status_display()}"
 
-        status_display = self.get_status_display() if hasattr(self, 'get_status_display') else 'Неизвестно'
-        return f"Рассылка от {start_time_str} - {status_display}"
-
-    def clean(self) -> None:
+    def clean(self):
         """Валидация модели перед сохранением"""
         super().clean()
 
@@ -124,7 +109,7 @@ class Mailing(models.Model):
                 'end_time': 'Дата окончания должна быть позже даты начала'
             })
 
-    def calculate_status(self) -> str:
+    def calculate_status(self):
         """
         Динамически вычисляет статус рассылки на основе текущего времени
         Согласно ТЗ:
@@ -141,7 +126,7 @@ class Mailing(models.Model):
         else:
             return self.STATUS_COMPLETED
 
-    def update_status(self, save: bool = True) -> str:
+    def update_status(self, save=True):
         """
         Обновляет статус рассылки в базе данных
         Если save=True - сохраняет изменения в БД
@@ -151,57 +136,54 @@ class Mailing(models.Model):
         if self.status != new_status:
             self.status = new_status
             if save:
-                # Используем self.__class__ вместо явного указания Mailing
-                self.__class__.objects.filter(pk=self.pk).update(status=new_status)
+                    self.__class__.objects.filter(pk=self.pk).update(status=new_status)
 
         return self.status
 
-    def get_absolute_url(self) -> str:
+    def get_absolute_url(self):
         from django.urls import reverse
         return reverse('mailings:mailing_detail', kwargs={'pk': self.pk})
 
-    def recipients_count(self) -> int:
+    def recipients_count(self):
         """Количество получателей"""
-        if TYPE_CHECKING:
-            return self.recipients.count()  # type: ignore
         return self.recipients.count()
 
     recipients_count.short_description = 'Кол-во получателей'
 
-    def is_active(self) -> bool:
+    def is_active(self):
         """Проверяет, активна ли рассылка в данный момент"""
         return self.calculate_status() == self.STATUS_STARTED
 
-    def time_until_start(self) -> Optional[str]:
+    def time_until_start(self):
         """Время до начала рассылки (для созданных)"""
-        if self.calculate_status() == self.STATUS_CREATED:
-            # Проверяем, что start_time существует
-            if self.start_time:
-                # Приводим к datetime для операции вычитания
-                start_time_dt: dt = self.start_time
-                delta: datetime.timedelta = start_time_dt - timezone.now()
-                days = delta.days
-                hours = delta.seconds // 3600
-                minutes = (delta.seconds % 3600) // 60
-                return f"{days}д {hours}ч {minutes}м"
+        if self.calculate_status() == self.STATUS_CREATED and self.start_time:
+            delta = self.start_time - timezone.now()
+            days = delta.days
+            hours = delta.seconds // 3600
+            minutes = (delta.seconds % 3600) // 60
+            return f"{days}д {hours}ч {minutes}м"
         return None
 
-    def duration(self) -> Optional[str]:
+    def duration(self):
         """Длительность рассылки"""
         if self.end_time and self.start_time:
-            # Приводим к datetime для операции вычитания
-            end_time_dt: dt = self.end_time
-            start_time_dt: dt = self.start_time
-            delta: datetime.timedelta = end_time_dt - start_time_dt
+            delta = self.end_time - self.start_time
             days = delta.days
             hours = delta.seconds // 3600
             return f"{days}д {hours}ч"
         return None
 
+
 class MailingLog(models.Model):
     """
-    Лог отправки сообщения
+    Лог отправки сообщения (Попытка рассылки)
+    Соответствует ТЗ пункт 5:
+    - Дата и время попытки (attempt_time)
+    - Статус ('Успешно', 'Не успешно')
+    - Ответ почтового сервера (server_response)
+    - Рассылка (mailing, внешний ключ на модель «Рассылка»)
     """
+
     STATUS_SUCCESS = 'Успешно'
     STATUS_FAILED = 'Не успешно'
     STATUS_CHOICES = [
@@ -209,66 +191,91 @@ class MailingLog(models.Model):
         (STATUS_FAILED, 'Не успешно'),
     ]
 
-    mailing: 'models.ForeignKey' = models.ForeignKey(
+    # ОБЯЗАТЕЛЬНОЕ ПО ТЗ: внешний ключ на рассылку
+    mailing = models.ForeignKey(
         Mailing,
         verbose_name='Рассылка',
         on_delete=models.CASCADE,
         related_name='logs'
     )
 
-    client: 'models.ForeignKey' = models.ForeignKey(
-        Client,
-        verbose_name='Клиент',
-        on_delete=models.CASCADE,
-        related_name='mailing_logs'
-    )
-
-    status: 'models.CharField' = models.CharField(
+    # ОБЯЗАТЕЛЬНОЕ ПО ТЗ: статус попытки
+    status = models.CharField(
         verbose_name='Статус',
         max_length=20,
         choices=STATUS_CHOICES
     )
 
-    error_message: 'models.TextField' = models.TextField(
-        verbose_name='Сообщение об ошибке',
+    # ОБЯЗАТЕЛЬНОЕ ПО ТЗ: ответ почтового сервера
+    server_response = models.TextField(
+        verbose_name='Ответ почтового сервера',
         blank=True,
-        null=True
+        null=True,
+        help_text='Ответ SMTP сервера при отправке письма'
     )
 
-    sent_at: 'models.DateTimeField' = models.DateTimeField(
+    # ОБЯЗАТЕЛЬНОЕ ПО ТЗ: дата и время попытки
+    attempt_time = models.DateTimeField(
+        verbose_name='Дата и время попытки',
+        default=timezone.now,
+        help_text='Время создания записи о попытке отправки'
+    )
+
+    # Для обратной совместимости оставляем sent_at
+    sent_at = models.DateTimeField(
         verbose_name='Дата и время отправки',
-        auto_now_add=True
+        auto_now_add=True,
+        editable=False
     )
 
-    server_response: 'models.TextField' = models.TextField(
-        verbose_name='Ответ сервера',
+    # ДОПОЛНИТЕЛЬНЫЕ ПОЛЯ (не в ТЗ, но полезные):
+    client_email = models.EmailField(
+        verbose_name='Email получателя',
         blank=True,
-        null=True
+        null=True,
+        help_text='Email адрес, на который отправлялось письмо'
+    )
+
+    message_subject = models.CharField(
+        verbose_name='Тема письма',
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Тема отправленного письма'
     )
 
     class Meta:
-        verbose_name = 'Лог отправки'
-        verbose_name_plural = 'Логи отправки'
-        ordering = ['-sent_at']
+        verbose_name = 'Попытка рассылки'
+        verbose_name_plural = 'Попытки рассылок'
+        ordering = ['-attempt_time']  # Используем attempt_time согласно ТЗ
         indexes = [
-            models.Index(fields=['sent_at']),
+            models.Index(fields=['attempt_time']),
             models.Index(fields=['status']),
             models.Index(fields=['mailing']),
+            models.Index(fields=['client_email']),
         ]
 
-    def __str__(self) -> str:
-        """Строковое представление лога"""
-        # Используем id напрямую из ForeignKey
+    def save(self, *args, **kwargs):
+        """Синхронизация sent_at и attempt_time для обратной совместимости"""
+        if not self.attempt_time:
+            self.attempt_time = timezone.now()
+        self.sent_at = self.attempt_time  # Для старых записей
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        """Строковое представление согласно ТЗ"""
         mailing_id = self.mailing_id if hasattr(self, 'mailing_id') else 'Нет рассылки'
+        time_str = self.attempt_time.strftime('%d.%m.%Y %H:%M') if self.attempt_time else 'Нет времени'
+        return f"Попытка {mailing_id} - {self.status} - {time_str}"
 
-        # Проверяем, что клиент существует
-        client_obj: Optional['ClientType'] = self.client
-        if client_obj and hasattr(client_obj, 'email'):
-            client_email = client_obj.email
-        else:
-            client_email = 'Нет клиента'
-
-        return f"Лог {mailing_id} - {client_email} - {self.status}"
-
-    def is_successful(self) -> bool:
+    def is_successful(self):
+        """Проверяет успешность попытки"""
         return self.status == self.STATUS_SUCCESS
+
+    def get_short_response(self):
+        """Короткая версия ответа сервера (для отображения в списках)"""
+        if self.server_response:
+            return (self.server_response[:100] + '...'
+                    if len(self.server_response) > 100
+                    else self.server_response)
+        return 'Нет ответа сервера'

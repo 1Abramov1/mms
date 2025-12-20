@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Общая статистика{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+    <!-- Заголовок -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>📊 Общая статистика</h3>
+        <a href="{% url 'mailings:mailing_list' %}" class="btn btn-outline-secondary btn-sm">
+            К рассылкам
+        </a>
+    </div>
+
+    <!-- Основные показатели -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="text-muted">Всего рассылок</h5>
+                    <h2>{{ mailing_stats.total }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body">
+                    <h5>Создано</h5>
+                    <h2>{{ mailing_stats.created }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h5>Запущено</h5>
+                    <h2>{{ mailing_stats.started }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center bg-secondary text-white">
+                <div class="card-body">
+                    <h5>Завершено</h5>
+                    <h2>{{ mailing_stats.completed }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Процент успеха -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Процент успешных доставок</h5>
+            <div class="progress" style="height: 25px;">
+                <div class="progress-bar bg-success" style="width: {{ overall_stats.success_rate }}%">
+                    {{ overall_stats.success_rate|floatformat:1 }}%
+                </div>
+                {% widthratio overall_stats.success_rate 1 -1 as neg_rate %}
+                <div class="progress-bar bg-danger" style="width: {{ 100|add:neg_rate }}%">
+                    {{ 100|add:neg_rate|floatformat:1 }}%
+                </div>
+            </div>
+            <div class="mt-2 d-flex justify-content-between">
+                <small>Успешно: {{ overall_stats.successful_logs }}</small>
+                <small>Неудачно: {{ overall_stats.failed_logs }}</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Последние логги -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Последние активности</h5>
+        </div>
+        <div class="card-body">
+            {% if recent_logs %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Рассылка</th>
+                                <th>Получатель</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                            <tr>
+                                <td><small>{{ log.attempt_time|date:"H:i d.m" }}</small></td>
+                                <td>
+                                    <a href="{% url 'mailings:mailing_detail' log.mailing.pk %}">
+                                        #{{ log.mailing.id }}
+                                    </a>
+                                </td>
+                                <td><small>{{ log.client_email|truncatechars:20|default:"—" }}</small></td>
+                                <td>
+                                    <span class="badge bg-{% if log.status == 'Успешно' %}success{% else %}danger{% endif %}">
+                                        {{ log.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted text-center mb-0">Нет данных о последних активностях</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

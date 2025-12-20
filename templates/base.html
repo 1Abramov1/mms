@@ -3,30 +3,242 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MMS{% endblock %}</title>
+    <title>{% block title %}MMS - Система управления рассылками{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body { padding-top: 20px; }
-        .container { margin-top: 20px; }
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 20px;
+            padding-bottom: 40px;
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .statistics-dropdown .dropdown-menu {
+            min-width: 250px;
+        }
+        footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            border-top: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+        }
+        .nav-link.active {
+            font-weight: 600;
+        }
+        /* Стили для уведомлений */
+        .alert-auto-close {
+            animation: fadeOut 5s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; display: none; }
+        }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- Навигационная панель -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-            <a class="navbar-brand" href="/">MMS</a>
-            <div class="navbar-nav">
-                <a class="nav-link" href="/">Главная</a>
-                <a class="nav-link" href="{% url 'clients:client_list' %}">Клиенты</a>
-                <a class="nav-link" href="{% url 'mailing_messages:message_list' %}">Сообщения</a>
-                <a class="nav-link" href="{% url 'mailings:mailing_list' %}">Рассылки</a>
+            <a class="navbar-brand" href="{% url 'mailings:mailing_list' %}">
+                <i class="bi bi-send-check"></i> MMS
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'clients:client_list' %}">
+                            <i class="bi bi-people"></i> Клиенты
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'mailing_messages:message_list' %}">
+                            <i class="bi bi-chat-text"></i> Сообщения
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'mailings:mailing_list' %}">
+                            <i class="bi bi-send"></i> Рассылки
+                        </a>
+                    </li>
+
+                    <!-- Меню статистики -->
+                    <li class="nav-item dropdown statistics-dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bar-chart"></i> Статистика
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'mailings:mailing_stats' %}">
+                                    <i class="bi bi-speedometer2"></i> Общая статистика
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'mailings:overall_statistics' %}">
+                                    <i class="bi bi-graph-up"></i> Расширенная статистика
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <h6 class="dropdown-header">Быстрый доступ</h6>
+                            </li>
+                            <li>
+                            <a class="dropdown-item" href="{% url 'mailings:mailing_list' %}?status=Создана">
+                                    <i class="bi bi-clock"></i> Созданные рассылки
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'mailings:mailing_list' %}?status=Запущена">
+                                    <i class="bi bi-play-circle"></i> Активные рассылки
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'mailings:mailing_list' %}?status=Завершена">
+                                    <i class="bi bi-check-circle"></i> Завершенные рассылки
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <!-- Правая часть навигации -->
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle"></i> {{ user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'admin:index' %}">
+                                    <i class="bi bi-gear"></i> Админ-панель
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'admin:mailings_mailing_changelist' %}">
+                                    <i class="bi bi-list-check"></i> Управление рассылками
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'logout' %}">
+                                    <i class="bi bi-box-arrow-right"></i> Выйти
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">
+                            <i class="bi bi-box-arrow-in-right"></i> Войти
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
             </div>
         </div>
     </nav>
 
+    <!-- Контейнер для контента -->
     <div class="container">
+        <!-- Хлебные крошки (опционально) -->
+        {% block breadcrumbs %}{% endblock %}
+
+        <!-- Заголовок страницы -->
+        {% block page_header %}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                {% block page_title %}{% endblock %}
+            </h1>
+            {% block page_actions %}{% endblock %}
+        </div>
+        {% endblock %}
+
+        <!-- Сообщения (уведомления) -->
+        {% if messages %}
+        <div class="messages mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {% if message.tags == 'success' %}
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                {% elif message.tags == 'error' or message.tags == 'danger' %}
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="bi bi-exclamation-circle-fill me-2"></i>
+                {% elif message.tags == 'info' %}
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                {% endif %}
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Основной контент -->
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Подвал -->
+    <footer class="mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6><i class="bi bi-send-check"></i> MMS - Система управления рассылками</h6>
+                    <p class="text-muted small">© {% now "Y" %} Все права защищены</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="small text-muted">
+                        <i class="bi bi-clock"></i> {% now "d.m.Y H:i" %}
+                    </p>
+                    <p class="small">
+                        <a href="{% url 'mailings:mailing_stats' %}" class="text-decoration-none">
+                            <i class="bi bi-bar-chart"></i> Статистика
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Скрипты -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Автоматическое закрытие уведомлений -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Закрытие алертов через 5 секунд
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+
+        // Подсветка активной ссылки в навигации
+        const currentUrl = window.location.pathname;
+        const navLinks = document.querySelectorAll('.navbar-nav .nav-link:not(.dropdown-toggle)');
+        navLinks.forEach(link => {
+            if (link.getAttribute('href') === currentUrl) {
+                link.classList.add('active');
+            }
+        });
+    });
+    </script>
+
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

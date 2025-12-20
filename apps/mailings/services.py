@@ -1,9 +1,11 @@
 import logging
+import smtplib
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-from .models import MailingLog
-
+from datetime import timedelta
+from django.db.models import Count
+from .models import MailingLog, Mailing
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class MailingService:
     @staticmethod
     def send_mailing(mailing):
         """
-        Основной метод отправки рассылки
+        Основной метод отправки рассылки с созданием логов согласно ТЗ 5
         """
         # 1. Проверка времени
         is_valid, error_message = MailingService.validate_mailing_time(mailing)
@@ -61,18 +63,19 @@ class MailingService:
                     print(f"Тема: {subject}")
                     print(f"Тело: {message_body[:100]}...")
 
-                    # Создаем успешный лог для теста
+                    # СОЗДАНИЕ ЛОГА ПО ТЗ 5:
                     MailingLog.objects.create(
                         mailing=mailing,
-                        client=client,
                         status=MailingLog.STATUS_SUCCESS,
-                        server_response="Сообщение успешно отправлено (режим разработки)"
+                        server_response="Сообщение успешно отправлено (режим разработки)",
+                        client_email=client.email,
+                        message_subject=subject[:255] if subject else 'Без темы'
                     )
                     successful_sends += 1
 
                 else:
                     # Реальная отправка
-                    send_mail(
+                    result = send_mail(
                         subject=subject,
                         message=message_body,
                         from_email=settings.DEFAULT_FROM_EMAIL,
@@ -80,25 +83,41 @@ class MailingService:
                         fail_silently=False,
                     )
 
+                    # СОЗДАНИЕ ЛОГА ПО ТЗ 5:
                     MailingLog.objects.create(
                         mailing=mailing,
-                        client=client,
-                        status=MailingLog.STATUS_SUCCESS
+                        status=MailingLog.STATUS_SUCCESS,
+                        server_response=f"Успешно отправлено на {client.email}. Сообщений отправлено: {result}",
+                        client_email=client.email,
+                        message_subject=subject[:255] if subject else 'Без темы'
                     )
                     successful_sends += 1
 
-            except Exception as e:
-                # Создаем лог с ошибкой
+            except smtplib.SMTPException as e:
+                # Ошибка SMTP сервера
                 MailingLog.objects.create(
                     mailing=mailing,
-                    client=client,
                     status=MailingLog.STATUS_FAILED,
-                    error_message=str(e)
+                    server_response=f"SMTP ошибка: {str(e)}. Код: {e.smtp_code if hasattr(e, 'smtp_code') else 'N/A'}",
+                    client_email=client.email,
+                    message_subject=subject[:255] if subject else 'Без темы'
                 )
                 failed_sends += 1
-                logger.error(f"Ошибка отправки клиенту {client.email}: {e}")
+                logger.error(f"SMTP ошибка отправки клиенту {client.email}: {e}")
 
-        # 4. Обновляем статус рассылки (ВНЕ цикла for!)
+            except Exception as e:
+                # Общая ошибка
+                MailingLog.objects.create(
+                    mailing=mailing,
+                    status=MailingLog.STATUS_FAILED,
+                    server_response=f"Ошибка: {type(e).__name__}: {str(e)}",
+                    client_email=client.email,
+                    message_subject=subject[:255] if subject else 'Без темы'
+                )
+                failed_sends += 1
+                logger.error(f"Общая ошибка отправки клиенту {client.email}: {e}")
+
+        # 4. Обновляем статус рассылки
         mailing.update_status()
         result_message = f"Отправлено успешно: {successful_sends}, с ошибками: {failed_sends}"
         logger.info(f"Рассылка {mailing.id}: {result_message}")
@@ -140,7 +159,8 @@ class MailingService:
             'total': logs.count(),
             'success': logs.filter(status=MailingLog.STATUS_SUCCESS).count(),
             'failed': logs.filter(status=MailingLog.STATUS_FAILED).count(),
-            'last_sent': logs.order_by('-sent_at').first(),
+            'last_sent': logs.order_by('-attempt_time').first(),
+            'first_sent': logs.order_by('attempt_time').first(),
         }
 
         if stats['total'] > 0:
@@ -149,3 +169,123 @@ class MailingService:
             stats['success_rate'] = 0
 
         return stats
+
+    # ДОБАВЛЕНО ПО ТЗ 5: Новые методы для работы с логами
+
+    @staticmethod
+    def get_mailing_statistics(mailing):
+        """
+        Полная статистика по рассылке согласно ТЗ
+        """
+        logs = mailing.logs.all()
+        total = logs.count()
+        successful = logs.filter(status=MailingLog.STATUS_SUCCESS).count()
+        failed = logs.filter(status=MailingLog.STATUS_FAILED).count()
+
+        return {
+            'total_attempts': total,
+            'successful_attempts': successful,
+            'failed_attempts': failed,
+            'success_rate': (successful / total * 100) if total > 0 else 0,
+            'last_attempt': logs.order_by('-attempt_time').first(),
+            'first_attempt': logs.order_by('attempt_time').first(),
+        }
+
+    @staticmethod
+    def get_detailed_logs(mailing, limit=50):
+        """
+        Детальные логи с возможностью диагностики
+        """
+        return mailing.logs.all().order_by('-attempt_time')[:limit]
+
+    @staticmethod
+    def get_hourly_statistics(mailing, hours=24):
+        """
+        Статистика по часам за последние N часов
+        """
+        since = timezone.now() - timedelta(hours=hours)
+
+        # Для SQLite (простая реализация)
+        if 'sqlite' in settings.DATABASES['default']['ENGINE']:
+            logs = mailing.logs.filter(attempt_time__gte=since)
+            stats = {}
+            for log in logs:
+                hour = log.attempt_time.strftime('%H:00')
+                if hour not in stats:
+                    stats[hour] = {'success': 0, 'failed': 0}
+
+                if log.status == MailingLog.STATUS_SUCCESS:stats[hour]['success'] += 1
+
+                else:
+                    stats[hour]['failed'] += 1
+
+                result = []
+                for hour, counts in sorted(stats.items()):
+                    result.append({
+                        'hour': hour,
+                        'success_count': counts['success'],
+                        'failed_count': counts['failed'],
+                        'total': counts['success'] + counts['failed']
+                    })
+                return result
+            else:
+                # Для PostgreSQL/MySQL
+                return mailing.logs.filter(
+                    attempt_time__gte=since
+                ).extra({
+                    'hour': "EXTRACT(HOUR FROM attempt_time AT TIME ZONE 'UTC')"
+                }).values('hour', 'status').annotate(
+                    count=Count('id')
+                ).order_by('hour', 'status')
+
+    @staticmethod
+    def get_client_delivery_history(client_email, limit=20):
+        """
+        История доставки для конкретного клиента
+        """
+        return MailingLog.objects.filter(
+            client_email=client_email
+        ).select_related('mailing').order_by('-attempt_time')[:limit]
+
+    @staticmethod
+    def check_and_process_active_mailings():
+        """
+        Проверяет и обрабатывает все активные рассылки
+        """
+        now = timezone.now()
+        active_mailings = Mailing.objects.filter(
+            start_time__lte=now,
+            end_time__gte=now,
+            status__in=[Mailing.STATUS_CREATED, Mailing.STATUS_STARTED]
+        )
+
+        results = []
+        for mailing in active_mailings:
+            success, message = MailingService.send_mailing(mailing)
+            results.append({
+                'mailing_id': mailing.id,
+                'subject': mailing.message.subject if mailing.message else 'N/A',
+                'success': success,
+                'message': message
+            })
+
+        logger.info(f"Обработано активных рассылок: {len(results)}")
+        return results
+
+    @staticmethod
+    def get_overall_statistics():
+        """
+        Общая статистика по всем рассылкам
+        """
+        total_mailings = Mailing.objects.count()
+        total_logs = MailingLog.objects.count()
+        successful_logs = MailingLog.objects.filter(status=MailingLog.STATUS_SUCCESS).count()
+
+        return {
+            'total_mailings': total_mailings,
+            'total_logs': total_logs,
+            'successful_logs': successful_logs,
+            'failed_logs': total_logs - successful_logs,
+            'success_rate': (successful_logs / total_logs * 100) if total_logs > 0 else 0,
+            'unique_clients': MailingLog.objects.values('client_email').distinct().count(),
+        }

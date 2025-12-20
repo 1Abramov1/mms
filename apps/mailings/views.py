@@ -1,10 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.utils import timezone
-from .models import Mailing, MailingLog
+from .models import Mailing, MailingLog, Client
 from .forms import MailingForm
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -275,3 +275,143 @@ def mailing_stats_detailed(request, pk):
         'logs_by_status': logs_by_status,
         'logs_today': logs_today,
     })
+
+
+class MailingStatisticsView(LoginRequiredMixin, DetailView):
+    """
+    Статистика по рассылке (класс-представление)
+    Использует новые методы из services.py
+    """
+    model = Mailing
+    template_name = 'mailings/mailing_statistics_class.html'
+    context_object_name = 'mailing'
+
+    def get_queryset(self):
+        """Фильтруем рассылки по правам доступа"""
+        queryset = super().get_queryset()
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(created_by=self.request.user)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mailing = self.object
+
+        # Используем новые методы из services.py
+        context['stats'] = MailingService.get_mailing_statistics(mailing)
+        context['detailed_logs'] = MailingService.get_detailed_logs(mailing, 20)
+        context['hourly_stats'] = MailingService.get_hourly_statistics(mailing, 24)
+
+        # Дополнительная информация
+        context['basic_stats'] = MailingService.get_mailing_stats(mailing)
+        context['recipients_count'] = mailing.recipients.count()
+        context['is_active'] = mailing.is_active()
+
+        return context
+
+    def dispatch(self, request, *args, **kwargs):
+        """Проверка прав доступа"""
+        mailing = self.get_object()
+        if not request.user.is_staff and mailing.created_by != request.user:
+            messages.error(request, 'У вас нет прав для просмотра статистики этой рассылки')
+            return redirect('mailings:mailing_detail', pk=mailing.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+
+class MailingLogsView(LoginRequiredMixin, DetailView):
+    """
+    Все логи рассылки (класс-представление)
+    """
+    model = Mailing
+    template_name = 'mailings/mailing_logs_class.html'
+    context_object_name = 'mailing'
+    paginate_by = 20  # Пагинация
+
+    def get_queryset(self):
+        """Фильтруем рассылки по правам доступа"""
+        queryset = super().get_queryset()
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(created_by=self.request.user)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mailing = self.object
+
+        # Получаем логи с возможностью фильтрации
+        logs = mailing.logs.all().order_by('-attempt_time')
+
+        # Фильтрация по статусу из GET-параметров
+        status_filter = self.request.GET.get('status')
+        if status_filter == 'success':
+            logs = logs.filter(status=MailingLog.STATUS_SUCCESS)
+        elif status_filter == 'failed':
+            logs = logs.filter(status=MailingLog.STATUS_FAILED)
+
+        # Поиск по email
+        email_search = self.request.GET.get('email')
+        if email_search:
+            logs = logs.filter(client_email__icontains=email_search)
+
+        # Статистика
+        context['logs'] = logs
+        context['total_count'] = logs.count()
+        context['success_count'] = logs.filter(status=MailingLog.STATUS_SUCCESS).count()
+        context['failed_count'] = logs.filter(status=MailingLog.STATUS_FAILED).count()
+        context['stats'] = MailingService.get_mailing_stats(mailing)
+
+        return context
+
+    def dispatch(self, request, *args, **kwargs):
+        """Проверка прав доступа"""
+        mailing = self.get_object()
+        if not request.user.is_staff and mailing.created_by != request.user:
+            messages.error(request, 'У вас нет прав для просмотра логов этой рассылки')
+            return redirect('mailings:mailing_detail', pk=mailing.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+
+# Дополнительные представления для статистики
+class OverallStatisticsView(LoginRequiredMixin, TemplateView):
+    """Общая статистика по всем рассылкам"""
+    template_name = 'mailings/overall_statistics.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Получаем общую статистику через сервис
+        context['overall_stats'] = MailingService.get_overall_statistics()
+
+        # Статистика по статусам рассылок
+        mailings = Mailing.objects.all()
+        for mailing in mailings:
+            mailing.update_status()
+
+        context['mailing_stats'] = {
+            'total': mailings.count(),
+            'created': mailings.filter(status=Mailing.STATUS_CREATED).count(),
+            'started': mailings.filter(status=Mailing.STATUS_STARTED).count(),
+            'completed': mailings.filter(status=Mailing.STATUS_COMPLETED).count(),
+        }
+
+        # Процентное соотношение
+        if context['mailing_stats']['total'] > 0:
+            context['mailing_stats']['created_percent'] = (
+                    context['mailing_stats']['created'] / context['mailing_stats']['total'] * 100
+            )
+            context['mailing_stats']['started_percent'] = (
+                    context['mailing_stats']['started'] / context['mailing_stats']['total'] * 100
+            )
+            context['mailing_stats']['completed_percent'] = (
+                    context['mailing_stats']['completed'] / context['mailing_stats']['total'] * 100
+            )
+
+        # Последние логовые записи
+        context['recent_logs'] = MailingLog.objects.all().select_related(
+            'mailing'
+        ).order_by('-attempt_time')[:10]
+
+        # ИСПРАВЛЕНИЕ: Убрана фильтрация по несуществующему полю is_active
+        context['active_clients'] = Client.objects.all().count()
+
+        return context
