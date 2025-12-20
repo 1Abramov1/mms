@@ -191,7 +191,7 @@ class MailingLog(models.Model):
         (STATUS_FAILED, 'Не успешно'),
     ]
 
-    # ОБЯЗАТЕЛЬНОЕ ПО ТЗ: внешний ключ на рассылку
+    # внешний ключ на рассылку
     mailing = models.ForeignKey(
         Mailing,
         verbose_name='Рассылка',
@@ -199,14 +199,24 @@ class MailingLog(models.Model):
         related_name='logs'
     )
 
-    # ОБЯЗАТЕЛЬНОЕ ПО ТЗ: статус попытки
+    # связь с клиентом
+    client = models.ForeignKey(
+        'clients.Client',
+        verbose_name='Клиент',
+        on_delete=models.CASCADE,
+        related_name='mailing_logs',
+        null=True,  # временно null=True для обратной совместимости
+        blank=True
+    )
+
+    # статус попытки
     status = models.CharField(
         verbose_name='Статус',
         max_length=20,
         choices=STATUS_CHOICES
     )
 
-    # ОБЯЗАТЕЛЬНОЕ ПО ТЗ: ответ почтового сервера
+    # ответ почтового сервера
     server_response = models.TextField(
         verbose_name='Ответ почтового сервера',
         blank=True,
@@ -214,7 +224,7 @@ class MailingLog(models.Model):
         help_text='Ответ SMTP сервера при отправке письма'
     )
 
-    # ОБЯЗАТЕЛЬНОЕ ПО ТЗ: дата и время попытки
+    # дата и время попытки
     attempt_time = models.DateTimeField(
         verbose_name='Дата и время попытки',
         default=timezone.now,
@@ -228,7 +238,15 @@ class MailingLog(models.Model):
         editable=False
     )
 
-    # ДОПОЛНИТЕЛЬНЫЕ ПОЛЯ (не в ТЗ, но полезные):
+    # Сообщения об ошибке
+    error_message = models.TextField(
+        verbose_name='Сообщение об ошибке',
+        blank=True,
+        null=True,
+        help_text='Подробное сообщение об ошибке'
+    )
+
+    # ДОПОЛНИТЕЛЬНЫЕ ПОЛЯ (не в ТЗ):
     client_email = models.EmailField(
         verbose_name='Email получателя',
         blank=True,
@@ -252,6 +270,7 @@ class MailingLog(models.Model):
             models.Index(fields=['attempt_time']),
             models.Index(fields=['status']),
             models.Index(fields=['mailing']),
+            models.Index(fields=['client']),
             models.Index(fields=['client_email']),
         ]
 
@@ -260,13 +279,19 @@ class MailingLog(models.Model):
         if not self.attempt_time:
             self.attempt_time = timezone.now()
         self.sent_at = self.attempt_time  # Для старых записей
+
+        # Если есть клиент, заполняем его email
+        if self.client and not self.client_email:
+            self.client_email = self.client.email
+
         super().save(*args, **kwargs)
 
     def __str__(self):
         """Строковое представление согласно ТЗ"""
         mailing_id = self.mailing_id if hasattr(self, 'mailing_id') else 'Нет рассылки'
         time_str = self.attempt_time.strftime('%d.%m.%Y %H:%M') if self.attempt_time else 'Нет времени'
-        return f"Попытка {mailing_id} - {self.status} - {time_str}"
+        email = self.client_email or (self.client.email if self.client else 'Нет email')
+        return f"Попытка {mailing_id} - {email} - {self.status} - {time_str}"
 
     def is_successful(self):
         """Проверяет успешность попытки"""

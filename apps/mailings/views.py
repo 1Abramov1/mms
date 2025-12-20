@@ -415,3 +415,30 @@ class OverallStatisticsView(LoginRequiredMixin, TemplateView):
         context['active_clients'] = Client.objects.all().count()
 
         return context
+
+
+def home(request):
+    """Главная страница с общей статистикой"""
+
+    # Общее количество всех созданных рассылок
+    total_mailings = Mailing.objects.count()
+
+    # Количество активных рассылок
+    now = timezone.now()
+    active_mailings = Mailing.objects.filter(
+        status='Запущена',
+        start_time__lte=now,
+        end_time__gte=now
+    ).count()
+
+    # Количество уникальных получателей
+    unique_clients = Client.objects.values('email').distinct().count()
+
+    context = {
+        'total_mailings': total_mailings,
+        'active_mailings': active_mailings,
+        'unique_clients': unique_clients,
+    }
+
+    # путь к шаблону
+    return render(request, 'mailings/home.html', context)

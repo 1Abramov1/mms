@@ -18,54 +18,39 @@ class Command(BaseCommand):
         mailing_id = options['mailing_id']
         current_time = timezone.now()
 
-        # Исправлено: переменные в нижнем регистре
-        mailing_model = apps.get_model('mailings', 'Mailing')
-        mailing_log_model = apps.get_model('mailings', 'MailingLog')
-
         try:
-            mailing = mailing_model.objects.get(id=mailing_id)
+            # Получаем модели
+            Mailing = apps.get_model('mailings', 'Mailing')
+            MailingLog = apps.get_model('mailings', 'MailingLog')
 
-            # ИНИЦИАЦИЯ: проверка времени согласно ТЗ
+            # Находим рассылку
+            mailing = Mailing.objects.get(id=mailing_id)
+
+            # Проверяем время
             if current_time < mailing.start_time:
-                self.stderr.write(
-                    self.style.ERROR(
-                        f'Ошибка: Текущее время ({current_time.strftime("%Y-%m-%d %H:%M")}) '
-                        f'раньше времени начала рассылки ({mailing.start_time.strftime("%Y-%m-%d %H:%M")})'
-                    )
-                )
+                self.stdout.write(self.style.ERROR(f'Рассылка еще не началась'))
                 return
 
-            if mailing.end_time and current_time > mailing.end_time:
-                self.stderr.write(
-                    self.style.ERROR(
-                        f'Ошибка: Текущее время ({current_time.strftime("%Y-%m-%d %H:%M")}) '
-                        f'позже времени окончания рассылки ({mailing.end_time.strftime("%Y-%m-%d %H:%M")})'
-                    )
-                )
+            if current_time > mailing.end_time:
+                self.stdout.write(self.style.ERROR(f'Рассылка уже завершена'))
                 return
 
-            self.stdout.write(self.style.SUCCESS(
-                f'Запуск рассылки ID {mailing_id}: "{mailing.message.subject}"'
-            ))
-            self.stdout.write(f'Время проверки пройдено: {current_time.strftime("%Y-%m-%d %H:%M")}')
+            # Начинаем отправку
+            self.stdout.write(self.style.SUCCESS(f'Запуск рассылки: {mailing.message.subject}'))
 
-            # ОПРЕДЕЛЕНИЕ ПОЛУЧАТЕЛЕЙ: выбираем всех клиентов, связанных с этой рассылкой
             clients = mailing.recipients.all()
-            self.stdout.write(f'Найдено получателей: {clients.count()}')
+            total_clients = clients.count()
+            self.stdout.write(f'Найдено получателей: {total_clients}')
 
-            if clients.count() == 0:
-                self.stderr.write(self.style.WARNING('Предупреждение: Нет получателей для рассылки'))
-                return
+            success = 0
+            failed = 0
 
-            successful_sends = 0
-            failed_sends = 0
-
-            # ОТПРАВКА ПИСЕМ: для каждого клиента
+            # Отправляем каждому клиенту
             for client in clients:
                 try:
-                    self.stdout.write(f'Отправка клиенту: {client.email}...', ending=' ')
+                    self.stdout.write(f'Отправка {client.email}...', ending=' ')
 
-                    # Отправка письма с помощью send_mail()
+                    # Отправка email
                     mail.send_mail(
                         subject=mailing.message.subject,
                         message=mailing.message.body,
@@ -74,41 +59,39 @@ class Command(BaseCommand):
                         fail_silently=False,
                     )
 
-                    # В случае успеха создается запись о попытке со статусом 'Успешно'
-                    mailing_log_model.objects.create(
+                    # Лог успеха
+                    MailingLog.objects.create(
                         mailing=mailing,
                         client=client,
-                        status='Успешно',  # Используем строковое значение
-                        sent_at=timezone.now(),
+                        status='Успешно',
+                        server_response='OK',
+                        client_email=client.email,
+                        message_subject=mailing.message.subject
                     )
 
-                    successful_sends += 1
-                    self.stdout.write(self.style.SUCCESS('Успешно'))
+                    success += 1
+                    self.stdout.write(self.style.SUCCESS('OK'))
 
-                except Exception as e:  # Исправлено: правильный отступ для except
-                    # При ошибке создается запись со статусом 'Не успешно' и текстом ошибки
-                    mailing_log_model.objects.create(
+                except Exception as e:
+                    # Лог ошибки
+                    MailingLog.objects.create(
                         mailing=mailing,
                         client=client,
-                        status='Не успешно',  # Используем строковое значение
+                        status='Не успешно',
+                        server_response=str(e),
                         error_message=str(e),
-                        sent_at=timezone.now(),
+                        client_email=client.email,
+                        message_subject=mailing.message.subject
                     )
 
-                    failed_sends += 1
-                    self.stdout.write(self.style.ERROR(f'Ошибка: {str(e)}'))
+                    failed += 1
+                    self.stdout.write(self.style.ERROR(f'ERROR: {str(e)}'))
 
-            # Итоговая статистика (вынесено из цикла for)
-            result_message = f"Отправлено успешно: {successful_sends}, с ошибками: {failed_sends}"
+            # Итоги
+            self.stdout.write(self.style.SUCCESS(f'Готово! Успешно: {success}, Ошибок: {failed}'))
 
-            if successful_sends > 0 or failed_sends > 0:
-                self.stdout.write(self.style.SUCCESS(f'Рассылка завершена: {result_message}'))
-                logger.info(f"Рассылка {mailing.id}: {result_message}")
-            else:
-                self.stdout.write(self.style.WARNING('Рассылка не выполнена (нет получателей)'))
+        except apps.get_model('mailings', 'Mailing').DoesNotExist:
+            self.stdout.write(self.style.ERROR(f'Рассылка с ID {mailing_id} не найдена'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Ошибка: {str(e)}'))
 
-
-        except mailing_model.DoesNotExist:  # Исправлено: правильная ссылка на модель
-            self.stderr.write(self.style.ERROR(f'Ошибка: Рассылка с ID {mailing_id} не найдена'))
-        except Exception as e:  # Этот блок except должен быть после блока DoesNotExist
-            self.stderr.write(self.style.ERROR(f'Критическая ошибка: {str(e)}'))

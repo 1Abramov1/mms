@@ -3,73 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MMS - Система управления рассылками{% endblock %}</title>
+    <title>{% block title %}Система рассылок{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <style>
-        body {
-            padding-top: 20px;
-            background-color: #f8f9fa;
-        }
-        .container {
-            margin-top: 20px;
-            padding-bottom: 40px;
-        }
-        .navbar-brand {
-            font-weight: 700;
-        }
-        .statistics-dropdown .dropdown-menu {
-            min-width: 250px;
-        }
-        footer {
-            margin-top: 50px;
-            padding: 20px 0;
-            border-top: 1px solid #dee2e6;
-            background-color: #f8f9fa;
-        }
-        .nav-link.active {
-            font-weight: 600;
-        }
-        /* Стили для уведомлений */
-        .alert-auto-close {
-            animation: fadeOut 5s forwards;
-        }
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { opacity: 0; display: none; }
-        }
-    </style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Дополнительные стили -->
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Навигационная панель -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <!-- Навигация -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'mailings:mailing_list' %}">
+            <!-- Бренд/логотип -->
+            <a class="navbar-brand" href="{% url 'home' %}">
                 <i class="bi bi-send-check"></i> MMS
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+
+            <!-- Кнопка для мобильного меню -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarContent" aria-controls="navbarContent"
+                    aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- Контент навигации -->
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <!-- Левая часть навигации -->
                 <ul class="navbar-nav me-auto">
+                    <!-- Главная страница -->
+                    {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'clients:client_list' %}">
-                            <i class="bi bi-people"></i> Клиенты
+                        <a class="nav-link" href="{% url 'home' %}">
+                            <i class="bi bi-house-door"></i> Главная
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'mailing_messages:message_list' %}">
-                            <i class="bi bi-chat-text"></i> Сообщения
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'mailings:mailing_list' %}">
+                    {% endif %}
+
+                    <!-- Меню рассылок -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-send"></i> Рассылки
                         </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'mailings:mailing_list' %}">
+                                    <i class="bi bi-list-ul"></i> Все рассылки
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'mailings:mailing_create' %}">
+                                    <i class="bi bi-plus-circle"></i> Создать рассылку
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Меню клиентов -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-people"></i> Клиенты
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'clients:client_list' %}">
+                                    <i class="bi bi-list-ul"></i> Все клиенты
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'clients:client_create' %}">
+                                    <i class="bi bi-person-plus"></i> Добавить клиента
+                                </a>
+                            </li>
+                        </ul>
                     </li>
 
                     <!-- Меню статистики -->
@@ -152,7 +163,7 @@
     </nav>
 
     <!-- Контейнер для контента -->
-    <div class="container">
+<div class="container">
         <!-- Хлебные крошки (опционально) -->
         {% block breadcrumbs %}{% endblock %}
 
