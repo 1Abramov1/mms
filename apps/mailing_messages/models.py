@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 
 
 class Message(models.Model):
@@ -28,7 +28,7 @@ class Message(models.Model):
     )
 
     created_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         verbose_name='Создал',
         on_delete=models.SET_NULL,
         null=True,

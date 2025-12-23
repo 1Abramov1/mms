@@ -25,7 +25,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'apps.clients',           # 1 приложение клиенты
     'apps.mailing_messages',  # 2 приложение управление сообщениями
-    'apps.mailings',          # 3 приложение управление рассылками
+    'apps.mailings', # 3 приложение управление рассылками
+    'apps.users', # 4 приложение регистрация и аутентификация пользователей
 ]
 
 MIDDLEWARE = [
@@ -118,3 +119,31 @@ SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
 EMAIL_SENDER_NAME = config('EMAIL_SENDER_NAME', default='Сервис Рассылок MMS')
 if EMAIL_SENDER_NAME and DEFAULT_FROM_EMAIL:
     DEFAULT_FROM_EMAIL = f'{EMAIL_SENDER_NAME} <{DEFAULT_FROM_EMAIL}>'
+
+# Настройки для регистрации и авторизации пользователей
+
+AUTH_USER_MODEL = 'users.User'
+
+# URL для аутентификации
+LOGIN_URL = '/users/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+# ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ ДЛЯ АВТОРИЗАЦИИ
+# Для формирования ссылок в письмах подтверждения
+SITE_URL = config('SITE_URL', default='http://127.0.0.1:8000')
+
+# Время жизни токена подтверждения email (в часах)
+EMAIL_VERIFICATION_TIMEOUT = 24  # 24 часа
+
+# Настройки сессии (опционально, для безопасности)
+SESSION_COOKIE_AGE = 1209600  # 2 недели в секундах
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+# CSRF настройки (для форм)
+CSRF_USE_SESSIONS = True
+CSRF_COOKIE_SECURE = False  # True для HTTPS в продакшене
+CSRF_COOKIE_HTTPONLY = True
+
+# Настройки для сброса пароля
+PASSWORD_RESET_TIMEOUT = 86400  # 24 часа в секундах

@@ -164,7 +164,7 @@ def mailing_start_now(request, pk):
         messages.warning(request, 'Рассылка уже завершена и не может быть запущена')
         return redirect('mailings:mailing_detail', pk=pk)
 
-    # ПРОВЕРКА ВРЕМЕНИ СОГЛАСНО ТЗ
+    # Проверяем время согласно ТЗ
     if current_time < mailing.start_time:
         messages.error(
             request,

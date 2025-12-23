@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from django.contrib.auth.models import User
+from django.conf import settings
 from apps.mailing_messages.models import Message
 from apps.clients.models import Client
 
@@ -65,7 +65,7 @@ class Mailing(models.Model):
     )
 
     created_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         verbose_name='Создал',
         on_delete=models.SET_NULL,
         null=True,

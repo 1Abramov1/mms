@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Удаление аккаунта{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Удаление аккаунта</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h5 class="alert-heading"><i class="fas fa-exclamation-circle me-2"></i>Внимание!</h5>
+                        <p class="mb-0">
+                            Вы собираетесь <strong>безвозвратно удалить</strong> ваш аккаунт.
+                            Это действие нельзя отменить.
+                        </p>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6>Что будет удалено:</h6>
+                            <ul class="mb-0">
+                                <li>Ваш профиль пользователя</li>
+                                <li>Все ваши данные</li>
+                                <li>Доступ ко всем функциям системы</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="confirmUsername" class="form-label">
+                                Для подтверждения введите ваш логин: <strong>{{ user.username }}</strong>
+                            </label>
+                            <input type="text"
+                                   id="confirmUsername"
+                                   name="confirm_username"
+                                   class="form-control"
+                                   placeholder="Введите ваш логин"
+                                   required>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Вы уверены? Это действие нельзя отменить!')">
+                                <i class="fas fa-trash-alt me-2"></i>Да, удалить мой аккаунт
+                            </button>
+                            <a href="{% url 'users:profile' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Отмена, вернуться в профиль
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

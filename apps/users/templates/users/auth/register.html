@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Регистрация - MMS Рассылки{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-person-plus"></i> Регистрация в системе</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label">Логин *</label>
+                            {{ form.username }}
+                            <div class="form-text">Только буквы, цифры и символы @/./+/-/_</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">Email *</label>
+                            {{ form.email }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.password1.id_for_label }}" class="form-label">Пароль *</label>
+                            {{ form.password1 }}
+                            <div class="form-text">
+                                <ul class="small">
+                                    <li>Не менее 8 символов</li>
+                                    <li>Не должен быть слишком простым</li>
+                                    <li>Не должен состоять только из цифр</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.password2.id_for_label }}" class="form-label">Подтверждение пароля *</label>
+                            {{ form.password2 }}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-person-plus"></i> Зарегистрироваться
+                            </button>
+                            <a href="{% url 'users:login' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-box-arrow-in-right"></i> Уже есть аккаунт?
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-muted small">
+                    <i class="bi bi-info-circle"></i> После регистрации проверьте почту для подтверждения email.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
