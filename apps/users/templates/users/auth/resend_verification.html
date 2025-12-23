@@ -1,0 +1,51 @@
+% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Повторная отправка подтверждения{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-envelope me-2"></i>Подтверждение email</h4>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">
+                        Введите ваш email, чтобы повторно отправить письмо для подтверждения.
+                    </p>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-1"></i>Email адрес
+                            </label>
+                            <input type="email"
+                                   name="email"
+                                   id="email"
+                                   class="form-control"
+                                   placeholder="example@mail.com"
+                                   required>
+                            <div class="form-text">
+                                Укажите email, который вы использовали при регистрации.
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>Отправить письмо подтверждения
+                            </button>
+                            <a href="{% url 'users:login' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Вернуться к входу
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

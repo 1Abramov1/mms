@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}Статистика рассылок - MMS{% endblock %}
+
+{% block page_title %}Статистика рассылок{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'mailings:mailing_list' %}" class="btn btn-outline-primary">
+    <i class="bi bi-arrow-left"></i> Назад к списку
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.3s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .progress {height: 25px;
+        border-radius: 12px;
+    }
+    .progress-bar {
+        border-radius: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Карточки статистики -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card bg-primary text-white">
+            <div class="card-body text-center">
+                <h5 class="card-title">Всего рассылок</h5>
+                <h1 class="display-4">{{ stats.total }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card bg-info text-white">
+            <div class="card-body text-center">
+                <h5 class="card-title">Созданы</h5>
+                <h1 class="display-4">{{ stats.created }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card bg-success text-white">
+            <div class="card-body text-center">
+                <h5 class="card-title">Запущены</h5>
+                <h1 class="display-4">{{ stats.started }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card bg-secondary text-white">
+            <div class="card-body text-center">
+                <h5 class="card-title">Завершены</h5>
+                <h1 class="display-4">{{ stats.completed }}</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Прогресс бары -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-bar-chart"></i> Распределение по статусам
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span>Созданы</span>
+                <span>{{ stats.created_percent|floatformat:1 }}% ({{ stats.created }})</span>
+            </div>
+            <div class="progress">
+                <div class="progress-bar bg-info" role="progressbar"
+                     style="width: {{ stats.created_percent }}%"></div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span>Запущены</span>
+                <span>{{ stats.started_percent|floatformat:1 }}% ({{ stats.started }})</span>
+            </div>
+            <div class="progress">
+                <div class="progress-bar bg-success" role="progressbar"
+                     style="width: {{ stats.started_percent }}%"></div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span>Завершены</span>
+                <span>{{ stats.completed_percent|floatformat:1 }}% ({{ stats.completed }})</span>
+            </div>
+            <div class="progress">
+                <div class="progress-bar bg-secondary" role="progressbar"
+                     style="width: {{ stats.completed_percent }}%"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Последние рассылки -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-clock-history"></i> Последние рассылки
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Дата начала</th>
+                        <th>Статус</th>
+                        <th>Сообщение</th>
+                        <th>Получатели</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mailing in mailings|slice:":5" %}
+                    <tr>
+                        <td>{{ mailing.start_time|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            {% if mailing.status == 'Создана' %}
+                            <span class="badge bg-info">{{ mailing.get_status_display }}</span>
+                            {% elif mailing.status == 'Запущена' %}
+                            <span class="badge bg-success">{{ mailing.get_status_display }}</span>
+                            {% elif mailing.status == 'Завершена' %}
+                            <span class="badge bg-secondary">{{ mailing.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ mailing.message.subject|truncatechars:30 }}</td>
+                        <td>{{ mailing.recipients_count }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            Нет данных о рассылках
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="mt-4 text-center">
+    <a href="{% url 'mailings:overall_statistics' %}" class="btn btn-primary">
+        <i class="bi bi-bar-chart-line"></i> Расширенная статистика
+    </a>
+    <a href="{% url 'mailings:mailing_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-list"></i> Все рассылки
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Автообновление страницы каждые 30 секунд для обновления статусов
+    setTimeout(function() {
+        window.location.reload();
+    }, 30000); // 30 секунд
+</script>
+{% endblock %}q

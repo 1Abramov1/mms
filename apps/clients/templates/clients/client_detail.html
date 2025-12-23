@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Клиент: {{ client.full_name }} - MMS</title>
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .client-info { background: #f8f9fa; padding: 20px; border-radius: 5px; }
+        .field { margin-bottom: 15px; }
+        .field-label { font-weight: bold; color: #495057; }
+        .field-value { margin-top: 5px; }
+        .actions { margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Информация о клиенте</h1>
+            <div>
+                <a href="{% url 'clients:client_list' %}" class="btn btn-secondary">← Назад к списку</a>
+            </div>
+        </div>
+
+        <div class="client-info">
+            <div class="field">
+                <div class="field-label">Email:</div>
+                <div class="field-value">{{ client.email }}</div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Ф. И. О.:</div>
+                <div class="field-value">{{ client.full_name }}</div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Комментарий:</div>
+                <div class="field-value">{{ client.comment|default:"-"|linebreaks }}</div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Дата создания:</div>
+                <div class="field-value">{{ client.created_at|date:"d.m.Y H:i" }}</div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Дата обновления:</div>
+                <div class="field-value">{{ client.updated_at|date:"d.m.Y H:i" }}</div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="{% url 'clients:client_update' client.pk %}" class="btn">Редактировать</a>
+            <a href="{% url 'clients:client_delete' client.pk %}" class="btn btn-danger">Удалить</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Редактирование{% else %}Создание{% endif %} рассылки - MMS{% endblock %}
+
+{% block page_title %}{% if object %}Редактирование рассылки{% else %}Создание новой рассылки{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .datetime-input {
+        max-width: 300px;
+    }
+    .form-text {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    .errorlist {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-calendar-event"></i> Параметры рассылки
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <!-- Даты -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.start_time.id_for_label }}" class="form-label">
+                                {{ form.start_time.label }} *
+                            </label>
+                            {{ form.start_time }}
+                            {% if form.start_time.errors %}
+                        <div class="invalid-feedback d-block">
+                                {{ form.start_time.errors }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">{{ form.start_time.help_text }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.end_time.id_for_label }}" class="form-label">
+                                {{ form.end_time.label }} *
+                            </label>
+                            {{ form.end_time }}
+                            {% if form.end_time.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.end_time.errors }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">{{ form.end_time.help_text }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Сообщение -->
+                    <div class="mb-3">
+                        <label for="{{ form.message.id_for_label }}" class="form-label">
+                            {{ form.message.label }} *
+                        </label>
+                        {{ form.message }}
+                        {% if form.message.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.message.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Получатели -->
+                    <div class="mb-3">
+                        <label for="{{ form.recipients.id_for_label }}" class="form-label">
+                            {{ form.recipients.label }} *
+                        </label>
+                        {{ form.recipients }}
+                        {% if form.recipients.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.recipients.errors }}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">
+                            {{ form.recipients.help_text }}
+                            <br>
+                            <span id="recipients-count">Выбрано: 0 получателей</span>
+                        </div>
+                    </div>
+
+                    <!-- Кнопки -->
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            {% if object %}
+                            <i class="bi bi-check-circle"></i> Сохранить изменения
+                            {% else %}
+                            <i class="bi bi-plus-circle"></i> Создать рассылку
+                            {% endif %}
+                        </button>
+                        <a href="{% url 'mailings:mailing_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Помощь по заполнению -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Информация
+            </div>
+            <div class="card-body">
+                <h6>Правила создания рассылки:</h6>
+                <ul class="small">
+                    <li>Дата начала не может быть в прошлом</li>
+                    <li>Дата окончания должна быть позже даты начала</li>
+                    <li>Выберите хотя бы одного получателя</li>
+                    <li>Статус рассылки будет вычисляться автоматически</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Быстрый выбор -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightning"></i> Быстрые действия
+            </div>
+<div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'clients:client_create' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-person-plus"></i> Добавить клиента
+                    </a>
+                    <a href="{% url 'mailing_messages:message_create' %}" class="btn btn-outline-success">
+                        <i class="bi bi-envelope-plus"></i> Создать сообщение
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Счетчик получателей
+        function updateRecipientsCount() {
+            const select = document.getElementById('{{ form.recipients.id_for_label }}');
+            const count = select ? select.selectedOptions.length : 0;
+            const counter = document.getElementById('recipients-count');
+            if (counter) {
+                counter.textContent = `Выбрано: ${count} получателей`;
+                if (count === 0) {
+                    counter.classList.add('text-danger');
+                } else {
+                    counter.classList.remove('text-danger');
+                }
+            }
+        }
+
+        // Инициализация
+        updateRecipientsCount();
+
+        // Слушаем изменения
+        const recipientsSelect = document.getElementById('{{ form.recipients.id_for_label }}');
+        if (recipientsSelect) {
+            recipientsSelect.addEventListener('change', updateRecipientsCount);
+        }
+
+        // Установка минимальной даты для end_time
+        const startTimeInput = document.getElementById('{{ form.start_time.id_for_label }}');
+        const endTimeInput = document.getElementById('{{ form.end_time.id_for_label }}');
+
+        if (startTimeInput && endTimeInput) {
+            startTimeInput.addEventListener('change', function() {
+                endTimeInput.min = this.value;
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if object %}Редактирование{% else %}Создание{% endif %} сообщения - MMS</title>
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        textarea { min-height: 200px; resize: vertical; }
+        .error { color: #dc3545; font-size: 14px; margin-top: 5px; }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover { background: #218838; }
+        .btn-secondary {
+        background: #6c757d;
+        margin-left: 10px;
+        text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            display: inline-block;
+        }
+        .btn-secondary:hover { background: #5a6268; }
+        .form-actions { margin-top: 30px; }
+        .counter {
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+    <script>
+        function updateCounter() {
+            const textarea = document.getElementById('id_body');
+            const counter = document.getElementById('charCounter');
+            if (textarea && counter) {
+                counter.textContent = `Символов: ${textarea.value.length}`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCounter();
+            const textarea = document.getElementById('id_body');
+            if (textarea) {
+                textarea.addEventListener('input', updateCounter);
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>{% if object %}Редактирование сообщения{% else %}Создание нового сообщения{% endif %}</h1>
+
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="{{ form.subject.id_for_label }}">{{ form.subject.label }}</label>
+                {{ form.subject }}
+                {% if form.subject.errors %}
+                    <div class="error">{{ form.subject.errors }}</div>
+                {% endif %}
+                {% if form.subject.help_text %}
+                    <small style="color: #666; font-size: 12px;">{{ form.subject.help_text }}</small>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.body.id_for_label }}">{{ form.body.label }}</label>
+                {{ form.body }}
+                <div class="counter" id="charCounter">Символов: 0</div>
+                {% if form.body.errors %}
+                    <div class="error">{{ form.body.errors }}</div>
+                {% endif %}
+                {% if form.body.help_text %}
+                    <small style="color: #666; font-size: 12px;">{{ form.body.help_text }}</small>
+                {% endif %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">
+                    {% if object %}Сохранить изменения{% else %}Создать сообщение{% endif %}
+                </button>
+                <a href="{% url 'mailing_messages:message_list' %}" class="btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление рассылки - MMS{% endblock %}
+
+{% block page_title %}Удаление рассылки{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle"></i> Внимание!
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-exclamation-octagon"></i> Вы собираетесь удалить рассылку
+                    </h5>
+                    <p>Это действие нельзя отменить. Все данные о рассылке будут удалены без возможности восстановления.</p>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6>Информация о рассылке:</h6>
+                        <p><strong>ID:</strong> {{ object.id }}</p>
+                        <p><strong>Начало:</strong> {{ object.start_time|date:"d.m.Y H:i" }}</p>
+                        <p><strong>Окончание:</strong> {{ object.end_time|date:"d.m.Y H:i" }}</p>
+                        <p><strong>Статус:</strong>
+                            {% if object.status == 'Создана' %}
+                            <span class="badge bg-info">{{ object.get_status_display }}</span>
+                            {% elif object.status == 'Запущена' %}
+                            <span class="badge bg-success">{{ object.get_status_display }}</span>
+                            {% elif object.status == 'Завершена' %}
+                            <span class="badge bg-secondary">{{ object.get_status_display }}</span>
+                            {% endif %}
+                        </p>
+                        <p><strong>Получателей:</strong> {{ object.recipients_count }}</p>
+                    </div>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="alert alert-danger">
+                        <p class="mb-0">
+                            <strong>Вы уверены, что хотите удалить эту рассылку?</strong><br>
+                            Это действие повлияет на статистику и отчеты.
+                        </p>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Да, удалить
+                        </button>
+                        <a href="{% url 'mailings:mailing_detail' object.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

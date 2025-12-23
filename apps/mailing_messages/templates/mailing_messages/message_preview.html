@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Предпросмотр: {{ message.subject }} - MMS{% endblock %}
+
+{% block page_title %}Предпросмотр сообщения{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <i class="bi bi-envelope-open"></i> Предпросмотр письма
+    </div>
+    <div class="card-body">
+        <!-- Заголовок письма -->
+        <div class="email-header p-3 bg-light rounded mb-4">
+            <h3>{{ message.subject }}</h3>
+            <p class="text-muted">
+                От: MMS Система рассылок<br>
+                Дата: {% now "d.m.Y H:i" %}
+            </p>
+        </div>
+
+        <!-- Тело письма -->
+        <div class="email-body p-4 border rounded">
+            {{ message.body|linebreaks }}
+        </div>
+
+        <!-- Подпись -->
+        <div class="email-footer mt-4 p-3 bg-light rounded">
+            <p class="text-muted small">
+                Это автоматическое сообщение от системы MMS.<br>
+                Пожалуйста, не отвечайте на это письмо.
+            </p>
+        </div>
+    </div>
+    <div class="card-footer">
+        <a href="{% url 'mailing_messages:message_detail' message.pk %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Назад к сообщению
+        </a>
+        <a href="{% url 'mailings:mailing_create' %}?message={{ message.pk }}" class="btn btn-primary">
+            <i class="bi bi-send"></i> Создать рассылку с этим сообщением
+        </a>
+    </div>
+</div>
+{% endblock %}
